@@ -2,7 +2,21 @@
 
 # LLM Council - Start script
 
-echo "Starting LLM Council..."
+set -e
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT_DIR"
+
+# Load environment variables from .env if present (for LLM_PROVIDER, API keys, etc.)
+if [ -f ".env" ]; then
+  echo "Loading environment from .env..."
+  set -a
+  # shellcheck disable=SC1091
+  . ".env"
+  set +a
+fi
+
+echo "Starting LLM Council (provider: ${LLM_PROVIDER:-openrouter})..."
 echo ""
 
 # Start backend
