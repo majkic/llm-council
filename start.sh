@@ -16,6 +16,15 @@ if [ -f ".env" ]; then
   set +a
 fi
 
+# Load non-secret parameters (provider/model config)
+if [ -f "llm-params.env" ]; then
+  echo "Loading environment from llm-params.env..."
+  set -a
+  # shellcheck disable=SC1091
+  . "llm-params.env"
+  set +a
+fi
+
 echo "Starting LLM Council (provider: ${LLM_PROVIDER:-openrouter})..."
 echo ""
 
