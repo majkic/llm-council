@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
+import Login from './components/Login';
 import { api } from './api';
 import './App.css';
 
@@ -10,11 +11,26 @@ function App() {
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [usageStats, setUsageStats] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Load conversations and stats on mount
+  // Check auth and load conversations on mount
   useEffect(() => {
-    loadConversations();
-    loadUsageStats();
+    const initApp = async () => {
+      try {
+        const currentUser = await api.getCurrentUser();
+        setUser(currentUser);
+        if (currentUser) {
+          await loadConversations();
+          await loadUsageStats();
+        }
+      } catch (error) {
+        console.error('Initialization failed:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+    initApp();
   }, []);
 
   // Load conversation details when selected
@@ -224,19 +240,46 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await api.logout();
+      setUser(null);
+      setConversations([]);
+      setCurrentConversation(null);
+      setCurrentConversationId(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="app-loading">
+        <div className="spinner"></div>
+        <p>Identifying yourself to the Council...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Login />;
+  }
+
   return (
-    <div className="app">
+    <div className="app-container">
       <Sidebar
         conversations={conversations}
         currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
+        onSelectConversation={setCurrentConversationId}
         onNewConversation={handleNewConversation}
         usageStats={usageStats}
+        user={user}
+        onLogout={handleLogout}
       />
       <ChatInterface
         conversation={currentConversation}
-        onSendMessage={handleSendMessage}
         isLoading={isLoading}
+        onSendMessage={handleSendMessage}
       />
     </div>
   );

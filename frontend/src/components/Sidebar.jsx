@@ -7,23 +7,20 @@ export default function Sidebar({
   onSelectConversation,
   onNewConversation,
   usageStats,
+  user,
+  onLogout
 }) {
-  const formatMoney = (credits) => {
-    if (!credits || credits.balance === undefined) return 'Loading...';
-    if (credits.balance === null) return 'N/A';
-    return `$${credits.balance.toFixed(2)}`;
+  const formatMoney = (val) => {
+    if (val === null || val === undefined) return 'Loading...';
+    if (val === 'N/A') return 'N/A';
+    return `$${parseFloat(val).toFixed(2)}`;
   };
 
-  const formatTokens = (quota) => {
-    if (!quota || !quota.remaining_tokens) return 'Loading...';
-    if (quota.remaining_tokens === 'Unknown') return 'Start chat...';
-    
-    // Check if it's already a number or a string that looks like one
-    const val = quota.remaining_tokens;
-    if (typeof val === 'number') return val.toLocaleString();
-    if (!isNaN(val)) return parseInt(val).toLocaleString();
-    
-    return val; // It might be some other string format
+  const formatTokens = (val) => {
+    if (val === 'Unknown') return 'Start chat...';
+    if (val === 'N/A') return 'N/A';
+    if (!val) return 'Loading...';
+    return parseInt(val).toLocaleString();
   };
 
   return (

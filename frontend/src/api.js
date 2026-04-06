@@ -9,7 +9,9 @@ export const api = {
    * List all conversations.
    */
   async listConversations() {
-    const response = await fetch(`${API_BASE}/api/conversations`);
+    const response = await fetch(`${API_BASE}/api/conversations`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to list conversations');
     }
@@ -23,7 +25,9 @@ export const api = {
     const url = provider
       ? `${API_BASE}/api/models?provider=${provider}`
       : `${API_BASE}/api/models`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to list models');
     }
@@ -34,7 +38,9 @@ export const api = {
    * Get account usage stats (OpenRouter credits, Abacus quota).
    */
   async getUsageStats() {
-    const response = await fetch(`${API_BASE}/api/usage/stats`);
+    const response = await fetch(`${API_BASE}/api/usage/stats`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch usage stats');
     }
@@ -42,8 +48,44 @@ export const api = {
   },
 
   /**
-   * Create a new conversation.
+   * Get current user (check auth status).
    */
+  async getCurrentUser() {
+    const response = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Ensure cookies are actually sent
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        return null;
+      }
+      throw new Error('Failed to fetch user');
+    }
+    return response.json();
+  },
+
+  /**
+   * Start Google Login flow.
+   */
+  login() {
+    window.location.href = `${API_BASE}/api/auth/login`;
+  },
+
+  /**
+   * Logout.
+   */
+  async logout() {
+    const response = await fetch(`${API_BASE}/api/auth/logout`, {
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      throw new Error('Logout failed');
+    }
+    return response.json();
+  },
   async createConversation() {
     const response = await fetch(`${API_BASE}/api/conversations`, {
       method: 'POST',
@@ -51,6 +93,7 @@ export const api = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({}),
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to create conversation');
@@ -63,7 +106,10 @@ export const api = {
    */
   async getConversation(conversationId) {
     const response = await fetch(
-      `${API_BASE}/api/conversations/${conversationId}`
+      `${API_BASE}/api/conversations/${conversationId}`,
+      {
+        credentials: 'include'
+      }
     );
     if (!response.ok) {
       throw new Error('Failed to get conversation');
@@ -83,6 +129,7 @@ export const api = {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ content }),
+        credentials: 'include'
       }
     );
     if (!response.ok) {
