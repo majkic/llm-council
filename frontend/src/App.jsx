@@ -9,10 +9,12 @@ function App() {
   const [currentConversationId, setCurrentConversationId] = useState(null);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [usageStats, setUsageStats] = useState(null);
 
-  // Load conversations on mount
+  // Load conversations and stats on mount
   useEffect(() => {
     loadConversations();
+    loadUsageStats();
   }, []);
 
   // Load conversation details when selected
@@ -21,6 +23,15 @@ function App() {
       loadConversation(currentConversationId);
     }
   }, [currentConversationId]);
+
+  const loadUsageStats = async () => {
+    try {
+      const stats = await api.getUsageStats();
+      setUsageStats(stats);
+    } catch (error) {
+      console.error('Failed to load usage stats:', error);
+    }
+  };
 
   const loadConversations = async () => {
     try {
@@ -57,11 +68,14 @@ function App() {
     setCurrentConversationId(id);
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content, options = {}) => {
     if (!currentConversationId) return;
 
     setIsLoading(true);
     try {
+      // Refresh stats before starting
+      loadUsageStats();
+
       // Optimistically add user message to UI
       const userMessage = { role: 'user', content };
       setCurrentConversation((prev) => ({
@@ -90,62 +104,80 @@ function App() {
       }));
 
       // Send message with streaming
-      await api.sendMessageStream(currentConversationId, content, (eventType, event) => {
+      await api.sendMessageStream(currentConversationId, content, options, (eventType, event) => {
         switch (eventType) {
           case 'stage1_start':
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const messages = [...prev.messages || []];
+              if (messages.length === 0) return prev;
+              const lastMsg = { ...messages[messages.length - 1] };
+              if (!lastMsg.loading) lastMsg.loading = {};
               lastMsg.loading.stage1 = true;
+              messages[messages.length - 1] = lastMsg;
               return { ...prev, messages };
             });
             break;
 
           case 'stage1_complete':
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const messages = [...prev.messages || []];
+              if (messages.length === 0) return prev;
+              const lastMsg = { ...messages[messages.length - 1] };
               lastMsg.stage1 = event.data;
+              if (!lastMsg.loading) lastMsg.loading = {};
               lastMsg.loading.stage1 = false;
+              messages[messages.length - 1] = lastMsg;
               return { ...prev, messages };
             });
             break;
 
           case 'stage2_start':
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const messages = [...prev.messages || []];
+              if (messages.length === 0) return prev;
+              const lastMsg = { ...messages[messages.length - 1] };
+              if (!lastMsg.loading) lastMsg.loading = {};
               lastMsg.loading.stage2 = true;
+              messages[messages.length - 1] = lastMsg;
               return { ...prev, messages };
             });
             break;
 
           case 'stage2_complete':
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const messages = [...prev.messages || []];
+              if (messages.length === 0) return prev;
+              const lastMsg = { ...messages[messages.length - 1] };
               lastMsg.stage2 = event.data;
               lastMsg.metadata = event.metadata;
+              if (!lastMsg.loading) lastMsg.loading = {};
               lastMsg.loading.stage2 = false;
+              messages[messages.length - 1] = lastMsg;
               return { ...prev, messages };
             });
             break;
 
           case 'stage3_start':
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const messages = [...prev.messages || []];
+              if (messages.length === 0) return prev;
+              const lastMsg = { ...messages[messages.length - 1] };
+              if (!lastMsg.loading) lastMsg.loading = {};
               lastMsg.loading.stage3 = true;
+              messages[messages.length - 1] = lastMsg;
               return { ...prev, messages };
             });
             break;
 
           case 'stage3_complete':
             setCurrentConversation((prev) => {
-              const messages = [...prev.messages];
-              const lastMsg = messages[messages.length - 1];
+              const messages = [...prev.messages || []];
+              if (messages.length === 0) return prev;
+              const lastMsg = { ...messages[messages.length - 1] };
               lastMsg.stage3 = event.data;
+              if (!lastMsg.loading) lastMsg.loading = {};
               lastMsg.loading.stage3 = false;
+              messages[messages.length - 1] = lastMsg;
               return { ...prev, messages };
             });
             break;
@@ -156,8 +188,19 @@ function App() {
             break;
 
           case 'complete':
-            // Stream complete, reload conversations list
+            // Stream complete, reload conversations list and usage stats
             loadConversations();
+            loadUsageStats();
+            if (event.metadata) {
+              setCurrentConversation((prev) => {
+                const messages = [...prev.messages || []];
+                if (messages.length === 0) return prev;
+                const lastMsg = { ...messages[messages.length - 1] };
+                lastMsg.metadata = event.metadata;
+                messages[messages.length - 1] = lastMsg;
+                return { ...prev, messages };
+              });
+            }
             setIsLoading(false);
             break;
 
@@ -175,7 +218,7 @@ function App() {
       // Remove optimistic messages on error
       setCurrentConversation((prev) => ({
         ...prev,
-        messages: prev.messages.slice(0, -2),
+        messages: (prev.messages || []).slice(0, -2),
       }));
       setIsLoading(false);
     }
@@ -188,6 +231,7 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        usageStats={usageStats}
       />
       <ChatInterface
         conversation={currentConversation}

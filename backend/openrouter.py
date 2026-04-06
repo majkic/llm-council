@@ -13,13 +13,9 @@ async def query_model(
     """
     Query a single model via OpenRouter API.
 
-    Args:
-        model: OpenRouter model identifier (e.g., "openai/gpt-4o")
-        messages: List of message dicts with 'role' and 'content'
-        timeout: Request timeout in seconds
-
     Returns:
-        Response dict with 'content' and optional 'reasoning_details', or None if failed
+        Response dict with 'content', 'usage', and optional 'reasoning_details', or None if failed.
+        usage: {prompt_tokens: int, completion_tokens: int, total_tokens: int}
     """
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -42,10 +38,16 @@ async def query_model(
 
             data = response.json()
             message = data['choices'][0]['message']
+            usage = data.get('usage', {
+                'prompt_tokens': 0,
+                'completion_tokens': 0,
+                'total_tokens': 0
+            })
 
             return {
                 'content': message.get('content'),
-                'reasoning_details': message.get('reasoning_details')
+                'reasoning_details': message.get('reasoning_details'),
+                'usage': usage
             }
 
     except Exception as e:
@@ -60,10 +62,6 @@ async def query_models_parallel(
     """
     Query multiple models in parallel.
 
-    Args:
-        models: List of OpenRouter model identifiers
-        messages: List of message dicts to send to each model
-
     Returns:
         Dict mapping model identifier to response dict (or None if failed)
     """
@@ -77,3 +75,62 @@ async def query_models_parallel(
 
     # Map models to their responses
     return {model: response for model, response in zip(models, responses)}
+
+
+async def list_models() -> List[str]:
+    """
+    List all available text-generation models from OpenRouter.
+
+    Returns:
+        List of model identifiers
+    """
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get("https://openrouter.ai/api/v1/models", headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            
+            models = []
+            for model_info in data.get('data', []):
+                # Filter for text models if possible, or just include all
+                model_id = model_info.get('id')
+                if model_id:
+                    models.append(model_id)
+            
+            return sorted(models)
+
+    except Exception as e:
+        print(f"Error listing OpenRouter models: {e}")
+        return []
+
+
+async def get_credits() -> Dict[str, Any]:
+    """
+    Fetch the account credit balance from OpenRouter.
+
+    Returns:
+        Dict with 'balance' or empty if failed.
+    """
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get("https://openrouter.ai/api/v1/credits", headers=headers)
+            response.raise_for_status()
+            data = response.json().get('data', {})
+            
+            total_credits = data.get('total_credits', 0)
+            total_usage = data.get('total_usage', 0)
+            balance = total_credits - total_usage
+            
+            return {"balance": balance}
+    except Exception as e:
+        print(f"Error fetching OpenRouter credits: {e}")
+        return {"balance": None}

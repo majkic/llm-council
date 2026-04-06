@@ -17,6 +17,31 @@ export const api = {
   },
 
   /**
+   * List available models for a provider.
+   */
+  async listModels(provider) {
+    const url = provider
+      ? `${API_BASE}/api/models?provider=${provider}`
+      : `${API_BASE}/api/models`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to list models');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get account usage stats (OpenRouter credits, Abacus quota).
+   */
+  async getUsageStats() {
+    const response = await fetch(`${API_BASE}/api/usage/stats`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch usage stats');
+    }
+    return response.json();
+  },
+
+  /**
    * Create a new conversation.
    */
   async createConversation() {
@@ -70,10 +95,13 @@ export const api = {
    * Send a message and receive streaming updates.
    * @param {string} conversationId - The conversation ID
    * @param {string} content - The message content
+   * @param {object} options - Optional parameters: { provider, models, chairman_model }
    * @param {function} onEvent - Callback function for each event: (eventType, data) => void
    * @returns {Promise<void>}
    */
-  async sendMessageStream(conversationId, content, onEvent) {
+  async sendMessageStream(conversationId, content, options, onEvent) {
+    const { provider, models, chairman_model } = options || {};
+    
     const response = await fetch(
       `${API_BASE}/api/conversations/${conversationId}/message/stream`,
       {
@@ -81,7 +109,12 @@ export const api = {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ 
+          content,
+          provider,
+          models,
+          chairman_model
+        }),
       }
     );
 
@@ -101,12 +134,14 @@ export const api = {
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
-          const data = line.slice(6);
+          const rawData = line.slice(6).trim();
+          if (!rawData) continue;
+          
           try {
-            const event = JSON.parse(data);
+            const event = JSON.parse(rawData);
             onEvent(event.type, event);
           } catch (e) {
-            console.error('Failed to parse SSE event:', e);
+            console.error('Failed to parse SSE event:', e, 'Raw data:', rawData);
           }
         }
       }

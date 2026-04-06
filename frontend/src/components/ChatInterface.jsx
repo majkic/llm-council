@@ -3,7 +3,25 @@ import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
 import Stage3 from './Stage3';
+import { api } from '../api';
 import './ChatInterface.css';
+
+const PROVIDER_MODELS = {
+  openrouter: [
+    'openai/gpt-4o',
+    'anthropic/claude-3.5-sonnet',
+    'google/gemini-pro-1.5',
+    'meta-llama/llama-3-70b-instruct',
+    'mistralai/mistral-large-2',
+  ],
+  abacus: [
+    'openai/gpt-4o',
+    'anthropic/claude-3-sonnet',
+    'google/gemini-1.5-pro',
+    'meta-llama/llama-3-8b',
+    'route-llm',
+  ],
+};
 
 export default function ChatInterface({
   conversation,
@@ -11,6 +29,10 @@ export default function ChatInterface({
   isLoading,
 }) {
   const [input, setInput] = useState('');
+  const [provider, setProvider] = useState('openrouter');
+  const [selectedModels, setSelectedModels] = useState(PROVIDER_MODELS.openrouter);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [customModel, setCustomModel] = useState('');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -21,11 +43,46 @@ export default function ChatInterface({
     scrollToBottom();
   }, [conversation]);
 
+  // Update selected models and fetch available models when provider changes
+  useEffect(() => {
+    setSelectedModels(PROVIDER_MODELS[provider] || []);
+    fetchAvailableModels();
+  }, [provider]);
+
+  const fetchAvailableModels = async () => {
+    try {
+      const models = await api.listModels(provider);
+      setAvailableModels(models);
+    } catch (error) {
+      console.error('Failed to fetch available models:', error);
+      setAvailableModels([]);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (input.trim() && !isLoading) {
-      onSendMessage(input);
+      onSendMessage(input, {
+        provider,
+        models: selectedModels.length > 0 ? selectedModels : null,
+      });
       setInput('');
+    }
+  };
+
+  const handleToggleModel = (model) => {
+    setSelectedModels((prev) =>
+      prev.includes(model)
+        ? prev.filter((m) => m !== model)
+        : [...prev, model]
+    );
+  };
+
+  const handleAddCustomModel = (e) => {
+    e.preventDefault();
+    if (customModel.trim() && !selectedModels.includes(customModel.trim())) {
+      setSelectedModels((prev) => [...prev, customModel.trim()]);
+      setCustomModel('');
     }
   };
 
@@ -48,13 +105,76 @@ export default function ChatInterface({
     );
   }
 
+  const isNewConversation = conversation.messages.length === 0;
+
   return (
     <div className="chat-interface">
       <div className="messages-container">
-        {conversation.messages.length === 0 ? (
+        {isNewConversation ? (
           <div className="empty-state">
             <h2>Start a conversation</h2>
-            <p>Ask a question to consult the LLM Council</p>
+            <p>Choose your council members and ask a question</p>
+
+            <div className="config-container">
+              <div className="config-section">
+                <label>LLM Provider</label>
+                <div className="provider-selector">
+                  <button
+                    className={`provider-btn ${provider === 'openrouter' ? 'active' : ''}`}
+                    onClick={() => setProvider('openrouter')}
+                  >
+                    OpenRouter
+                  </button>
+                  <button
+                    className={`provider-btn ${provider === 'abacus' ? 'active' : ''}`}
+                    onClick={() => setProvider('abacus')}
+                  >
+                    Abacus
+                  </button>
+                </div>
+              </div>
+
+              <div className="config-section">
+                <label>Council Models ({selectedModels.length} selected)</label>
+                <div className="model-grid">
+                  {(PROVIDER_MODELS[provider] || []).map((model) => (
+                    <div
+                      key={model}
+                      className={`model-chip ${selectedModels.includes(model) ? 'active' : ''}`}
+                      onClick={() => handleToggleModel(model)}
+                    >
+                      {model.split('/').pop()}
+                    </div>
+                  ))}
+                  {selectedModels
+                    .filter((m) => !PROVIDER_MODELS[provider]?.includes(m))
+                    .map((model) => (
+                      <div
+                        key={model}
+                        className="model-chip active custom"
+                        onClick={() => handleToggleModel(model)}
+                      >
+                        {model}
+                      </div>
+                    ))}
+                </div>
+                <form className="custom-model-form" onSubmit={handleAddCustomModel}>
+                  <input
+                    type="text"
+                    list="available-models"
+                    placeholder="Add custom model ID..."
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value)}
+                  />
+                  <datalist id="available-models">
+                    {availableModels.map((modelId) => (
+                      <option key={modelId} value={modelId} />
+                    ))}
+                  </datalist>
+                  <button type="submit" disabled={!customModel.trim()}>+</button>
+                </form>
+              </div>
+            </div>
           </div>
         ) : (
           conversation.messages.map((msg, index) => (
@@ -104,6 +224,22 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
+
+                  {/* Token Usage Summary */}
+                  {msg.metadata?.usage && (
+                    <div className="usage-summary">
+                      <div className="total-tokens">
+                        Total Tokens: <strong>{msg.metadata.usage.total.total_tokens.toLocaleString()}</strong>
+                      </div>
+                      <div className="usage-breakdown">
+                        <span>Stage 1: {msg.metadata.usage.stage1.total_tokens.toLocaleString()}</span>
+                        <span className="separator">•</span>
+                        <span>Stage 2: {msg.metadata.usage.stage2.total_tokens.toLocaleString()}</span>
+                        <span className="separator">•</span>
+                        <span>Stage 3: {msg.metadata.usage.stage3.total_tokens.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -120,7 +256,7 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {conversation.messages.length === 0 && (
+      {isNewConversation && (
         <form className="input-form" onSubmit={handleSubmit}>
           <textarea
             className="message-input"
@@ -134,7 +270,7 @@ export default function ChatInterface({
           <button
             type="submit"
             className="send-button"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || selectedModels.length === 0}
           >
             Send
           </button>

@@ -50,7 +50,7 @@ except Exception:
 # LLM provider selection
 # - openrouter: uses https://openrouter.ai/api/v1/chat/completions and OpenRouter model IDs (e.g. "openai/gpt-5.1")
 # - abacus: uses Abacus RouteLLM OpenAI-compatible API (default: https://routellm.abacus.ai/v1/chat/completions)
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").strip().lower()
+DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").strip().lower()
 
 # OpenRouter API key
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
@@ -62,9 +62,9 @@ ABACUS_API_URL = os.getenv("ABACUS_API_URL", "https://routellm.abacus.ai/v1/chat
 # Council members - list of OpenRouter model identifiers
 _COUNCIL_MODELS_ENV = os.getenv("COUNCIL_MODELS", "").strip()
 if _COUNCIL_MODELS_ENV:
-    COUNCIL_MODELS = [m.strip() for m in _COUNCIL_MODELS_ENV.split(",") if m.strip()]
+    DEFAULT_COUNCIL_MODELS = [m.strip() for m in _COUNCIL_MODELS_ENV.split(",") if m.strip()]
 else:
-    COUNCIL_MODELS = [
+    DEFAULT_COUNCIL_MODELS = [
         "openai/gpt-5.1",
         "google/gemini-3-pro-preview",
         "anthropic/claude-sonnet-4.5",
@@ -72,7 +72,12 @@ else:
     ]
 
 # Chairman model - synthesizes final response
-CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL", "google/gemini-3-pro-preview").strip()
+DEFAULT_CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL", "google/gemini-3-pro-preview").strip()
+
+# Legacy names for backward compatibility (still used in some places)
+LLM_PROVIDER = DEFAULT_LLM_PROVIDER
+COUNCIL_MODELS = DEFAULT_COUNCIL_MODELS
+CHAIRMAN_MODEL = DEFAULT_CHAIRMAN_MODEL
 
 # OpenRouter API endpoint
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"

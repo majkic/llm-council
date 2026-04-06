@@ -18,6 +18,36 @@
   color: #333;
 }
 
+.usage-stats-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.stat-label {
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  color: #4a90e2;
+  font-family: monospace;
+  font-weight: 600;
+}
+
 .new-conversation-btn {
   width: 100%;
   padding: 10px;
