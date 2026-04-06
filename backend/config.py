@@ -3,8 +3,16 @@
 import os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKEND_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 SECRETS_ENV_PATH = os.path.join(PROJECT_ROOT, ".env")
+# Fallback to backend/.env if not in root
+if not os.path.exists(SECRETS_ENV_PATH):
+    SECRETS_ENV_PATH = os.path.join(BACKEND_ROOT, ".env")
+
 PARAMS_ENV_PATH = os.path.join(PROJECT_ROOT, "llm-params.env")
+if not os.path.exists(PARAMS_ENV_PATH):
+    PARAMS_ENV_PATH = os.path.join(BACKEND_ROOT, "llm-params.env")
 
 def _load_env_file_fallback(path: str, *, override: bool) -> None:
     """Minimal .env loader when python-dotenv isn't available."""
@@ -59,11 +67,22 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "majkic@gmail.com") 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-long-secret-key-change-this") # For SessionMiddleware
 
+# Public server domain (e.g. llm-council.ll.rs)
+APP_DOMAIN = os.getenv("APP_DOMAIN", "llm-council.ll.rs").strip()
+
 # Detection for public vs local
-# We can use an environment variable or check the host at request time
-# For now, we'll allow setting it via APP_ENV
-APP_ENV = os.getenv("APP_ENV", "local") # local, production
+# SECURE BY DEFAULT: Default to production if not specified.
+APP_ENV = os.getenv("APP_ENV", "production").lower()
 IS_PUBLIC_SERVER = APP_ENV == "production"
+
+# Explicit flag for local bypass - must be 'true' and APP_ENV must be local
+ALLOW_LOCAL_AUTH_BYPASS = os.getenv("ALLOW_LOCAL_AUTH_BYPASS", "false").lower() == "true"
+
+print(f"--- LLM Council Config ---")
+print(f"APP_ENV (detected): {APP_ENV}")
+print(f"IS_PUBLIC_SERVER: {IS_PUBLIC_SERVER}")
+print(f"APP_DOMAIN: {APP_DOMAIN}")
+print(f"---------------------------")
 
 # Helper to check if we are on localhost
 def is_localhost(host: str) -> bool:

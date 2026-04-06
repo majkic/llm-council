@@ -13,7 +13,9 @@ export default function Sidebar({
   const formatMoney = (val) => {
     if (val === null || val === undefined) return 'Loading...';
     if (val === 'N/A') return 'N/A';
-    return `$${parseFloat(val).toFixed(2)}`;
+    const num = parseFloat(val);
+    if (isNaN(num)) return '$0.00';
+    return `$${num.toFixed(2)}`;
   };
 
   const formatTokens = (val) => {
@@ -31,12 +33,8 @@ export default function Sidebar({
         {usageStats && (
           <div className="usage-stats-header">
             <div className="stat-item" title="OpenRouter Balance">
-              <span className="stat-label">OpenRouter:</span>
+              <span className="stat-label">OpenRouter Credits:</span>
               <span className="stat-value">{formatMoney(usageStats.openrouter)}</span>
-            </div>
-            <div className="stat-item" title="Abacus Remaining Tokens">
-              <span className="stat-label">Abacus:</span>
-              <span className="stat-value">{formatTokens(usageStats.abacus)}</span>
             </div>
           </div>
         )}

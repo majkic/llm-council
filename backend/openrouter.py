@@ -2,7 +2,7 @@
 
 import httpx
 from typing import List, Dict, Any, Optional
-from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
+from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL, APP_DOMAIN
 
 
 async def query_model(
@@ -116,6 +116,10 @@ async def get_credits() -> Dict[str, Any]:
     Returns:
         Dict with 'balance' or empty if failed.
     """
+    if not OPENROUTER_API_KEY:
+        print("OpenRouter Credits: [DEBUG] OPENROUTER_API_KEY is MISSING in backend environment.")
+        return {"balance": 0.0}
+
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
     }
@@ -123,14 +127,33 @@ async def get_credits() -> Dict[str, Any]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get("https://openrouter.ai/api/v1/credits", headers=headers)
-            response.raise_for_status()
-            data = response.json().get('data', {})
             
-            total_credits = data.get('total_credits', 0)
-            total_usage = data.get('total_usage', 0)
-            balance = total_credits - total_usage
+            print(f"OpenRouter Credits: [DEBUG] HTTP Status: {response.status_code}")
             
-            return {"balance": balance}
+            if response.status_code != 200:
+                print(f"OpenRouter Credits: [DEBUG] API Error Body: {response.text}")
+                return {"balance": 0.0}
+            
+            resp_json = response.json()
+            print(f"OpenRouter Credits: [DEBUG] Full Response: {resp_json}")
+            
+            # Use the exact format provided by the user:
+            # {"data":{"total_credits":10,"total_usage":0.3570403}}
+            data = resp_json.get('data', {})
+            tc = data.get('total_credits', 0.0)
+            tu = data.get('total_usage', 0.0)
+            
+            print(f"OpenRouter Credits: [DEBUG] Extracted total_credits: {tc}, total_usage: {tu}")
+            
+            # Exact formula requested: remaining_credits = total_credits - total_usage
+            remaining = float(tc) - float(tu)
+            final_balance = round(max(0, remaining), 4) # More precision for tiny balances
+            
+            print(f"OpenRouter Credits: [DEBUG] Calculated balance: {final_balance}")
+            return {"balance": final_balance}
+            
     except Exception as e:
-        print(f"Error fetching OpenRouter credits: {e}")
-        return {"balance": None}
+        print(f"OpenRouter Credits: [DEBUG] Unexpected Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"balance": 0.0}

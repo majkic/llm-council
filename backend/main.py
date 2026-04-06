@@ -18,7 +18,11 @@ from .config import (
     SECRET_KEY, 
     ADMIN_EMAIL, 
     IS_PUBLIC_SERVER,
-    is_localhost
+    is_localhost,
+    APP_DOMAIN,
+    APP_ENV,
+    ALLOW_LOCAL_AUTH_BYPASS,
+    OPENROUTER_API_KEY
 )
 from .council import (
     run_full_council,
@@ -33,48 +37,66 @@ from .llm_provider import list_models, get_credits, get_quota
 
 app = FastAPI(title="LLM Council API")
 
-# Google SSO initialization
-sso = GoogleSSO(
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
-    allow_insecure_http=True, # We handle SSL via Cloudflare/Caddy
-    scope=["openid", "email", "profile"]
-)
+# Google SSO initialization - only if configured
+sso = None
+if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+    sso = GoogleSSO(
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        allow_insecure_http=True, # We handle SSL via Cloudflare/Caddy
+        scope=["openid", "email", "profile"]
+    )
 
 # Enable Sessions for OAuth
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=SECRET_KEY,
+    https_only=IS_PUBLIC_SERVER, # Enforce HTTPS cookies in production
+    same_site="lax"
+)
 
-# Enable CORS for local development
+# Enable CORS for local development and production domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "https://llm-board.ll.rs"],
+    allow_origins=[
+        "http://localhost:5174", 
+        "http://localhost:5173", 
+        "http://localhost:3000", 
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5173",
+        f"https://{APP_DOMAIN}", 
+        "https://llm-board.ll.rs" # Keep for compatibility if needed
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-async def get_current_user(request: Request) -> Optional[Dict[str, Any]]:
+async def get_current_user(request: Request) -> Dict[str, Any]:
     """
     Dependency to check for authentication and authorization.
-    Bypasses for localhost. Enforces admin-only for public.
+    STRICT MODE: No bypass allowed.
     """
     host = request.headers.get("host", "")
+    session_user = request.session.get("user")
     
-    # Bypass auth for localhost
-    if not IS_PUBLIC_SERVER and is_localhost(host):
-        return {"email": ADMIN_EMAIL, "name": "Local Admin", "is_local": True}
+    # URGENT DEBUG LOGGING
+    print(f"--- SECURITY CHECK ---")
+    print(f"HOST: {host}")
+    print(f"APP_ENV: {APP_ENV}")
+    print(f"ALLOW_LOCAL_BYPASS: {ALLOW_LOCAL_AUTH_BYPASS}")
+    print(f"HAS_SESSION: {session_user is not None}")
+    print(f"----------------------")
     
-    # Check session
-    user = request.session.get("user")
-    if not user:
+    if not session_user:
         raise HTTPException(status_code=401, detail="Authentication required")
     
     # Authorization: Only allow ADMIN_EMAIL
-    if user.get("email") != ADMIN_EMAIL:
-        raise HTTPException(status_code=403, detail="Access denied: Admin only")
+    if session_user.get("email") != ADMIN_EMAIL:
+        raise HTTPException(status_code=403, detail=f"Access denied: {session_user.get('email')} is not authorized")
     
-    return user
+    return session_user
 
 
 class CreateConversationRequest(BaseModel):
@@ -114,24 +136,38 @@ async def root():
 
 # --- Authentication Endpoints ---
 
+def get_redirect_uri(request: Request) -> str:
+    """Consistently determine the redirect URI for OAuth."""
+    # Force production URI if in production mode
+    if APP_ENV == "production":
+        return f"https://{APP_DOMAIN}/api/auth/callback"
+        
+    # Local development fallback
+    host = request.headers.get("host", "")
+    return f"http://{host}/api/auth/callback"
+
+
 @app.get("/api/auth/login")
 async def login(request: Request):
     """Start Google OAuth flow."""
-    # We use a hardcoded redirect URI for your public server
-    redirect_uri = "https://llm-board.ll.rs/api/auth/callback"
-    
-    # On localhost, we can use a relative or local redirect
-    host = request.headers.get("host", "")
-    if is_localhost(host):
-        redirect_uri = f"http://{host}/api/auth/callback"
-        
+    if not sso:
+        raise HTTPException(
+            status_code=500, 
+            detail="Google SSO not configured. Cannot perform OAuth login."
+        )
+
+    redirect_uri = get_redirect_uri(request)
     return await sso.get_login_redirect(redirect_uri=redirect_uri)
 
 
 @app.get("/api/auth/callback")
 async def login_callback(request: Request):
     """Handle Google OAuth callback."""
-    user = await sso.verify_and_process(request)
+    if not sso:
+        raise HTTPException(status_code=500, detail="Google SSO not configured")
+        
+    redirect_uri = get_redirect_uri(request)
+    user = await sso.verify_and_process(request, redirect_uri=redirect_uri)
     if not user:
         raise HTTPException(status_code=401, detail="Google authentication failed")
     
@@ -172,12 +208,11 @@ async def get_me(user: Optional[Dict[str, Any]] = Depends(get_current_user)):
 
 @app.get("/api/usage/stats")
 async def get_usage_stats(user: Dict[str, Any] = Depends(get_current_user)):
-    """Get OpenRouter credits and Abacus quota."""
+    """Get OpenRouter credits."""
     openrouter_stats = await get_credits()
-    abacus_stats = await get_quota()
+    print(f"DEBUG get_usage_stats (openrouter_stats): {openrouter_stats}")
     return {
-        "openrouter": openrouter_stats,
-        "abacus": abacus_stats
+        "openrouter": openrouter_stats.get("balance")
     }
 
 

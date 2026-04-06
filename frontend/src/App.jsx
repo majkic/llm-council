@@ -19,13 +19,16 @@ function App() {
     const initApp = async () => {
       try {
         const currentUser = await api.getCurrentUser();
-        setUser(currentUser);
-        if (currentUser) {
+        if (currentUser && currentUser.email) {
+          setUser(currentUser);
           await loadConversations();
           await loadUsageStats();
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Initialization failed:', error);
+        setUser(null);
       } finally {
         setIsCheckingAuth(false);
       }
@@ -266,7 +269,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app">
       <Sidebar
         conversations={conversations}
         currentConversationId={currentConversationId}
@@ -280,6 +283,8 @@ function App() {
         conversation={currentConversation}
         isLoading={isLoading}
         onSendMessage={handleSendMessage}
+        user={user}
+        onLogout={handleLogout}
       />
     </div>
   );

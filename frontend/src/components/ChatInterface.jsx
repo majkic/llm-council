@@ -14,19 +14,14 @@ const PROVIDER_MODELS = {
     'meta-llama/llama-3-70b-instruct',
     'mistralai/mistral-large-2',
   ],
-  abacus: [
-    'openai/gpt-4o',
-    'anthropic/claude-3-sonnet',
-    'google/gemini-1.5-pro',
-    'meta-llama/llama-3-8b',
-    'route-llm',
-  ],
 };
 
 export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
+  user,
+  onLogout
 }) {
   const [input, setInput] = useState('');
   const [provider, setProvider] = useState('openrouter');
@@ -94,23 +89,34 @@ export default function ChatInterface({
     }
   };
 
-  if (!conversation) {
-    return (
-      <div className="chat-interface">
-        <div className="empty-state">
-          <h2>Welcome to LLM Council</h2>
-          <p>Create a new conversation to get started</p>
-        </div>
-      </div>
-    );
-  }
-
-  const isNewConversation = conversation.messages.length === 0;
+  const isNewConversation = conversation && conversation.messages.length === 0;
 
   return (
     <div className="chat-interface">
+      <div className="chat-header">
+        <div className="user-profile">
+          <div className="user-avatar">
+            {user.picture ? (
+              <img src={user.picture} alt={user.name} />
+            ) : (
+              <div className="avatar-initial">{user.name.charAt(0)}</div>
+            )}
+          </div>
+          <div className="user-info">
+            <span className="user-name">{user.name}</span>
+            <span className="user-email">{user.email}</span>
+          </div>
+        </div>
+        <button className="logout-btn" onClick={onLogout}>Sign Out</button>
+      </div>
+
       <div className="messages-container">
-        {isNewConversation ? (
+        {!conversation ? (
+          <div className="empty-state">
+            <h2>Welcome to LLM Council</h2>
+            <p>Create or select a conversation to get started</p>
+          </div>
+        ) : isNewConversation ? (
           <div className="empty-state">
             <h2>Start a conversation</h2>
             <p>Choose your council members and ask a question</p>
@@ -120,16 +126,10 @@ export default function ChatInterface({
                 <label>LLM Provider</label>
                 <div className="provider-selector">
                   <button
-                    className={`provider-btn ${provider === 'openrouter' ? 'active' : ''}`}
-                    onClick={() => setProvider('openrouter')}
+                    className="provider-btn active"
+                    disabled
                   >
-                    OpenRouter
-                  </button>
-                  <button
-                    className={`provider-btn ${provider === 'abacus' ? 'active' : ''}`}
-                    onClick={() => setProvider('abacus')}
-                  >
-                    Abacus
+                    OpenRouter (Active)
                   </button>
                 </div>
               </div>
@@ -256,7 +256,7 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {isNewConversation && (
+      {!isNewConversation && (
         <form className="input-form" onSubmit={handleSubmit}>
           <textarea
             className="message-input"
