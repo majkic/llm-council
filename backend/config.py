@@ -50,7 +50,24 @@ except Exception:
 # LLM provider selection
 # - openrouter: uses https://openrouter.ai/api/v1/chat/completions and OpenRouter model IDs (e.g. "openai/gpt-5.1")
 # - abacus: uses Abacus RouteLLM OpenAI-compatible API (default: https://routellm.abacus.ai/v1/chat/completions)
-DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").strip().lower()
+DEFAULT_LLM_PROVIDER = os.getenv("LLM_PROVIDER", "abacus")
+
+# Google OAuth Settings
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+# Default to empty for security; must be set in .env on public server
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "majkic@gmail.com") 
+SECRET_KEY = os.getenv("SECRET_KEY", "your-long-secret-key-change-this") # For SessionMiddleware
+
+# Detection for public vs local
+# We can use an environment variable or check the host at request time
+# For now, we'll allow setting it via APP_ENV
+APP_ENV = os.getenv("APP_ENV", "local") # local, production
+IS_PUBLIC_SERVER = APP_ENV == "production"
+
+# Helper to check if we are on localhost
+def is_localhost(host: str) -> bool:
+    return host in ["localhost", "127.0.0.1"] or host.startswith("localhost:") or host.startswith("127.0.0.1:")
 
 # OpenRouter API key
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
