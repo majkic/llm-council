@@ -173,7 +173,17 @@ async def login_callback(request: Request):
     
     # Strict check: Only majkic@gmail.com!
     if user.email != ADMIN_EMAIL:
-        raise HTTPException(status_code=403, detail=f"Access denied: {user.email} is not authorized")
+        # Redirect to frontend with error param instead of raising 403
+        # This allows the React app to show a nice UI
+        from urllib.parse import urlencode
+        error_params = urlencode({"error": "unauthorized", "email": user.email})
+        
+        # Determine base redirect URL
+        host = request.headers.get("host", "")
+        if is_localhost(host):
+            return RedirectResponse(url=f"http://localhost:5173/?{error_params}")
+        
+        return RedirectResponse(url=f"/?{error_params}")
         
     # Store user in session
     request.session["user"] = {

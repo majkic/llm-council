@@ -58,9 +58,23 @@ export const api = {
       // Ensure cookies are actually sent
       credentials: 'include'
     });
+    
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         return null;
+      }
+      if (response.status === 403) {
+        try {
+          const data = await response.json();
+          // Extract email from "Access denied: email@gmail.com is not authorized"
+          const emailMatch = data.detail?.match(/Access denied: (.*) is not authorized/);
+          return { 
+            unauthorized: true, 
+            email: emailMatch ? emailMatch[1] : 'Unknown account'
+          };
+        } catch (e) {
+          return { unauthorized: true };
+        }
       }
       throw new Error('Failed to fetch user');
     }

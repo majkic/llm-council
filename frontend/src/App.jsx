@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import Login from './components/Login';
+import Unauthorized from './components/Unauthorized';
 import { api } from './api';
 import './App.css';
 
@@ -13,13 +14,32 @@ function App() {
   const [usageStats, setUsageStats] = useState(null);
   const [user, setUser] = useState(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [unauthorizedEmail, setUnauthorizedEmail] = useState('');
 
   // Check auth and load conversations on mount
   useEffect(() => {
     const initApp = async () => {
       try {
+        // 1. Check for error parameters in URL (from OAuth redirect)
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('error') === 'unauthorized') {
+          const email = params.get('email');
+          setIsUnauthorized(true);
+          setUnauthorizedEmail(email || 'Unknown account');
+          setIsCheckingAuth(false);
+          // Clean up URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // 2. Check current session status
         const currentUser = await api.getCurrentUser();
-        if (currentUser && currentUser.email) {
+        if (currentUser?.unauthorized) {
+          setIsUnauthorized(true);
+          setUnauthorizedEmail(currentUser.email);
+          setUser(null);
+        } else if (currentUser && currentUser.email) {
           setUser(currentUser);
           await loadConversations();
           await loadUsageStats();
@@ -262,6 +282,10 @@ function App() {
         <p>Identifying yourself to the Council...</p>
       </div>
     );
+  }
+
+  if (isUnauthorized) {
+    return <Unauthorized email={unauthorizedEmail} onLogout={handleLogout} />;
   }
 
   if (!user) {
