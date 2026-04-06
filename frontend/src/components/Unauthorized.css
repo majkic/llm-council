@@ -1,0 +1,57 @@
+.unauthorized-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  background-color: #f8f9fa;
+}
+
+.unauthorized-card {
+  background: white;
+  padding: 48px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  max-width: 480px;
+  width: 90%;
+}
+
+.lock-icon {
+  margin-bottom: 24px;
+  color: #DC3545;
+}
+
+.unauthorized-card h1 {
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #212529;
+}
+
+.message {
+  font-size: 16px;
+  color: #495057;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.subtext {
+  font-size: 14px;
+  color: #adb5bd;
+  margin-bottom: 32px;
+}
+
+.switch-account-btn {
+  background: #212529;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.switch-account-btn:hover {
+  background: #343a40;
+}
