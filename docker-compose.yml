@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./data/conversations:/app/data/conversations
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5174:5174"
+    environment:
+      # Empty value means the frontend will use relative paths (best for Nginx)
+      - VITE_API_URL=
+    depends_on:
+      - backend
+    restart: always
