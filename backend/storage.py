@@ -18,12 +18,13 @@ def get_conversation_path(conversation_id: str) -> str:
     return os.path.join(DATA_DIR, f"{conversation_id}.json")
 
 
-def create_conversation(conversation_id: str) -> Dict[str, Any]:
+def create_conversation(conversation_id: str, user_email: str) -> Dict[str, Any]:
     """
     Create a new conversation.
 
     Args:
         conversation_id: Unique identifier for the conversation
+        user_email: Email of the owner
 
     Returns:
         New conversation dict
@@ -32,6 +33,7 @@ def create_conversation(conversation_id: str) -> Dict[str, Any]:
 
     conversation = {
         "id": conversation_id,
+        "owner": user_email,
         "created_at": datetime.utcnow().isoformat(),
         "title": "New Conversation",
         "messages": []
@@ -45,23 +47,48 @@ def create_conversation(conversation_id: str) -> Dict[str, Any]:
     return conversation
 
 
-def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
+def get_conversation(conversation_id: str, user_email: str = None) -> Optional[Dict[str, Any]]:
     """
     Load a conversation from storage.
 
     Args:
         conversation_id: Unique identifier for the conversation
+        user_email: Optional email to verify ownership
 
     Returns:
-        Conversation dict or None if not found
+        Conversation dict or None if not found/unauthorized
     """
     path = get_conversation_path(conversation_id)
 
     if not os.path.exists(path):
         return None
 
-    with open(path, 'r') as f:
-        return json.load(f)
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+            # Authorization check
+            if user_email and data.get("owner") != user_email:
+                return None
+            return data
+    except Exception:
+        return None
+
+
+def delete_conversation(conversation_id: str, user_email: str):
+    """
+    Delete a conversation if it belongs to the user and is empty.
+    """
+    conversation = get_conversation(conversation_id, user_email)
+    if not conversation:
+        raise ValueError("Conversation not found or access denied")
+    
+    # Strictly follow the "if it is empty" rule
+    if len(conversation.get("messages", [])) > 0:
+        raise ValueError("Cannot delete non-empty conversation")
+    
+    path = get_conversation_path(conversation_id)
+    if os.path.exists(path):
+        os.remove(path)
 
 
 def save_conversation(conversation: Dict[str, Any]):
@@ -78,9 +105,9 @@ def save_conversation(conversation: Dict[str, Any]):
         json.dump(conversation, f, indent=2)
 
 
-def list_conversations() -> List[Dict[str, Any]]:
+def list_conversations(user_email: str) -> List[Dict[str, Any]]:
     """
-    List all conversations (metadata only).
+    List all conversations belonging to a user (metadata only).
 
     Returns:
         List of conversation metadata dicts
@@ -88,18 +115,25 @@ def list_conversations() -> List[Dict[str, Any]]:
     ensure_data_dir()
 
     conversations = []
+    if not os.path.exists(DATA_DIR):
+        return []
+        
     for filename in os.listdir(DATA_DIR):
         if filename.endswith('.json'):
             path = os.path.join(DATA_DIR, filename)
-            with open(path, 'r') as f:
-                data = json.load(f)
-                # Return metadata only
-                conversations.append({
-                    "id": data["id"],
-                    "created_at": data["created_at"],
-                    "title": data.get("title", "New Conversation"),
-                    "message_count": len(data["messages"])
-                })
+            try:
+                with open(path, 'r') as f:
+                    data = json.load(f)
+                    # Filter by owner
+                    if data.get("owner") == user_email:
+                        conversations.append({
+                            "id": data["id"],
+                            "created_at": data["created_at"],
+                            "title": data.get("title", "New Conversation"),
+                            "message_count": len(data["messages"])
+                        })
+            except Exception:
+                continue
 
     # Sort by creation time, newest first
     conversations.sort(key=lambda x: x["created_at"], reverse=True)
@@ -107,17 +141,13 @@ def list_conversations() -> List[Dict[str, Any]]:
     return conversations
 
 
-def add_user_message(conversation_id: str, content: str):
+def add_user_message(conversation_id: str, content: str, user_email: str):
     """
     Add a user message to a conversation.
-
-    Args:
-        conversation_id: Conversation identifier
-        content: User message content
     """
-    conversation = get_conversation(conversation_id)
+    conversation = get_conversation(conversation_id, user_email)
     if conversation is None:
-        raise ValueError(f"Conversation {conversation_id} not found")
+        raise ValueError(f"Conversation {conversation_id} not found or access denied")
 
     conversation["messages"].append({
         "role": "user",
@@ -132,21 +162,15 @@ def add_assistant_message(
     stage1: List[Dict[str, Any]],
     stage2: List[Dict[str, Any]],
     stage3: Dict[str, Any],
+    user_email: str,
     metadata: Dict[str, Any] = None
 ):
     """
     Add an assistant message with all 3 stages to a conversation.
-
-    Args:
-        conversation_id: Conversation identifier
-        stage1: List of individual model responses
-        stage2: List of model rankings
-        stage3: Final synthesized response
-        metadata: Additional metadata (e.g., usage)
     """
-    conversation = get_conversation(conversation_id)
+    conversation = get_conversation(conversation_id, user_email)
     if conversation is None:
-        raise ValueError(f"Conversation {conversation_id} not found")
+        raise ValueError(f"Conversation {conversation_id} not found or access denied")
 
     conversation["messages"].append({
         "role": "assistant",
@@ -159,17 +183,13 @@ def add_assistant_message(
     save_conversation(conversation)
 
 
-def update_conversation_title(conversation_id: str, title: str):
+def update_conversation_title(conversation_id: str, title: str, user_email: str):
     """
     Update the title of a conversation.
-
-    Args:
-        conversation_id: Conversation identifier
-        title: New title for the conversation
     """
-    conversation = get_conversation(conversation_id)
+    conversation = get_conversation(conversation_id, user_email)
     if conversation is None:
-        raise ValueError(f"Conversation {conversation_id} not found")
+        raise ValueError(f"Conversation {conversation_id} not found or access denied")
 
     conversation["title"] = title
     save_conversation(conversation)

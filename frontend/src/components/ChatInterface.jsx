@@ -269,26 +269,25 @@ export default function ChatInterface({
         <div ref={messagesEndRef} />
       </div>
 
-      {!isNewConversation && (
-        <form className="input-form" onSubmit={handleSubmit}>
-          <textarea
-            className="message-input"
-            placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={isLoading}
-            rows={3}
-          />
-          <button
-            type="submit"
-            className="send-button"
-            disabled={!input.trim() || isLoading || selectedModels.length === 0}
-          >
-            Send
-          </button>
-        </form>
-      )}
+      {/* ALWAYS SHOW INPUT FORM */}
+      <form className="input-form" onSubmit={handleSubmit}>
+        <textarea
+          className="message-input"
+          placeholder="Ask your question... (Shift+Enter for new line, Enter to send)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+          rows={3}
+        />
+        <button
+          type="submit"
+          className="send-button"
+          disabled={!input.trim() || isLoading || selectedModels.length === 0}
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 }
