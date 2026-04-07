@@ -284,6 +284,21 @@ function App() {
     }
   };
 
+  const handleDeleteConversation = async (conversationId) => {
+    if (!window.confirm('Are you sure you want to delete this empty conversation?')) return;
+    try {
+      await api.deleteConversation(conversationId);
+      loadConversations();
+      if (currentConversationId === conversationId) {
+        setCurrentConversationId(null);
+        setCurrentConversation(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      alert('Failed to delete: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   if (isCheckingAuth) {
     return (
       <div className="app-loading">
@@ -308,6 +323,7 @@ function App() {
         currentConversationId={currentConversationId}
         onSelectConversation={setCurrentConversationId}
         onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
         usageStats={usageStats}
         user={user}
         onLogout={handleLogout}
