@@ -126,31 +126,33 @@ async def get_credits() -> Dict[str, Any]:
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
+            # Try primary /credits endpoint first (requires Management API Key)
             response = await client.get("https://openrouter.ai/api/v1/credits", headers=headers)
             
-            print(f"OpenRouter Credits: [DEBUG] HTTP Status: {response.status_code}")
+            if response.status_code == 200:
+                resp_json = response.json()
+                data = resp_json.get('data', {})
+                tc = data.get('total_credits', 0.0)
+                tu = data.get('total_usage', 0.0)
+                remaining = float(tc) - float(tu)
+                return {"balance": round(max(0, remaining), 4)}
             
-            if response.status_code != 200:
-                print(f"OpenRouter Credits: [DEBUG] API Error Body: {response.text}")
-                return {"balance": 0.0}
+            # Fallback for standard keys (sk-or-v1-...) - use /auth/key endpoint
+            print(f"OpenRouter Credits: Primary endpoint failed ({response.status_code}), trying /auth/key fallback...")
+            fallback_resp = await client.get("https://openrouter.ai/api/v1/auth/key", headers=headers)
             
-            resp_json = response.json()
-            print(f"OpenRouter Credits: [DEBUG] Full Response: {resp_json}")
+            if fallback_resp.status_code == 200:
+                fb_json = fallback_resp.json()
+                data = fb_json.get('data', {})
+                # For standard keys, we often get limit and usage directly
+                limit = data.get('limit', 0.0)
+                usage = data.get('usage', 0.0)
+                if limit is not None:
+                    remaining = float(limit) - float(usage)
+                    return {"balance": round(max(0, remaining), 4)}
             
-            # Use the exact format provided by the user:
-            # {"data":{"total_credits":10,"total_usage":0.3570403}}
-            data = resp_json.get('data', {})
-            tc = data.get('total_credits', 0.0)
-            tu = data.get('total_usage', 0.0)
-            
-            print(f"OpenRouter Credits: [DEBUG] Extracted total_credits: {tc}, total_usage: {tu}")
-            
-            # Exact formula requested: remaining_credits = total_credits - total_usage
-            remaining = float(tc) - float(tu)
-            final_balance = round(max(0, remaining), 4) # More precision for tiny balances
-            
-            print(f"OpenRouter Credits: [DEBUG] Calculated balance: {final_balance}")
-            return {"balance": final_balance}
+            print(f"OpenRouter Credits: Both endpoints failed. Fallback status: {fallback_resp.status_code}")
+            return {"balance": 0.0}
             
     except Exception as e:
         print(f"OpenRouter Credits: [DEBUG] Unexpected Exception: {e}")
