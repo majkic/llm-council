@@ -34,7 +34,16 @@ function App() {
         }
 
         // 2. Check current session status
-        const currentUser = await api.getCurrentUser();
+        let currentUser = await api.getCurrentUser();
+        
+        // --- LOCAL DEVELOPMENT BYPASS ---
+        // If we are on localhost and auth failed, use a dummy user
+        if (!currentUser && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          console.log('Local development detected: Bypassing authentication');
+          currentUser = { email: 'majkic@gmail.com', name: 'Local Admin', is_local: true };
+        }
+        // ---------------------------------
+        
         if (currentUser?.unauthorized) {
           setIsUnauthorized(true);
           setUnauthorizedEmail(currentUser.email);

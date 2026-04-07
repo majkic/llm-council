@@ -14,6 +14,13 @@ const PROVIDER_MODELS = {
     'meta-llama/llama-3-70b-instruct',
     'mistralai/mistral-large-2',
   ],
+  abacus: [
+    'gpt-5.1',
+    'gemini-3.1-pro-preview',
+    'claude-sonnet-4-20250514',
+    'grok-4-0709',
+    'route-llm',
+  ],
 };
 
 export default function ChatInterface({
@@ -126,10 +133,16 @@ export default function ChatInterface({
                 <label>LLM Provider</label>
                 <div className="provider-selector">
                   <button
-                    className="provider-btn active"
-                    disabled
+                    className={`provider-btn ${provider === 'openrouter' ? 'active' : ''}`}
+                    onClick={() => setProvider('openrouter')}
                   >
-                    OpenRouter (Active)
+                    OpenRouter
+                  </button>
+                  <button
+                    className={`provider-btn ${provider === 'abacus' ? 'active' : ''}`}
+                    onClick={() => setProvider('abacus')}
+                  >
+                    Abacus
                   </button>
                 </div>
               </div>

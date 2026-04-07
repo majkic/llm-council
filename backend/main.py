@@ -59,13 +59,18 @@ app.add_middleware(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5174", 
         "http://localhost:5173", 
+        "http://localhost:5174", 
+        "http://localhost:5175", 
+        "http://localhost:5176", 
+        "http://localhost:5177", 
+        "http://localhost:5178", 
         "http://localhost:3000", 
         "http://127.0.0.1:5174",
         "http://127.0.0.1:5173",
         f"https://{APP_DOMAIN}", 
-        "https://llm-board.ll.rs" # Keep for compatibility if needed
+        "https://llm-board.ll.rs",
+        "https://llm-council.ll.rs"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -76,9 +81,12 @@ app.add_middleware(
 async def get_current_user(request: Request) -> Dict[str, Any]:
     """
     Dependency to check for authentication and authorization.
-    STRICT MODE: No bypass allowed.
+    Bypasses for local development if allowed. Enforces admin-only for public.
     """
-    host = request.headers.get("host", "")
+    # Simply bypass for local development regardless of host
+    if not IS_PUBLIC_SERVER:
+        return {"email": ADMIN_EMAIL, "name": "Local Admin", "is_local": True}
+        
     session_user = request.session.get("user")
     
     # URGENT DEBUG LOGGING

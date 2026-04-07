@@ -33,8 +33,12 @@ export default function Sidebar({
         {usageStats && (
           <div className="usage-stats-header">
             <div className="stat-item" title="OpenRouter Balance">
-              <span className="stat-label">OpenRouter Credits:</span>
-              <span className="stat-value">{formatMoney(usageStats.openrouter)}</span>
+              <span className="stat-label">OpenRouter:</span>
+              <span className="stat-value">{formatMoney(usageStats.openrouter?.balance)}</span>
+            </div>
+            <div className="stat-item" title="Abacus Remaining Tokens">
+              <span className="stat-label">Abacus:</span>
+              <span className="stat-value">{formatTokens(usageStats.abacus?.remaining_tokens)}</span>
             </div>
           </div>
         )}
