@@ -90,8 +90,9 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
     session_user = request.session.get("user")
     
     # URGENT DEBUG LOGGING
+    _host = request.headers.get("host", "")
     print(f"--- SECURITY CHECK ---")
-    print(f"HOST: {host}")
+    print(f"HOST: {_host}")
     print(f"APP_ENV: {APP_ENV}")
     print(f"ALLOW_LOCAL_BYPASS: {ALLOW_LOCAL_AUTH_BYPASS}")
     print(f"HAS_SESSION: {session_user is not None}")
@@ -189,7 +190,7 @@ async def login_callback(request: Request):
         # Determine base redirect URL
         host = request.headers.get("host", "")
         if is_localhost(host):
-            return RedirectResponse(url=f"http://localhost:5173/?{error_params}")
+            return RedirectResponse(url=f"http://localhost:5174/?{error_params}")
         
         return RedirectResponse(url=f"/?{error_params}")
         
@@ -204,7 +205,7 @@ async def login_callback(request: Request):
     # If on localhost, go to 5173. If production, stay on current domain.
     host = request.headers.get("host", "")
     if is_localhost(host):
-        return RedirectResponse(url="http://localhost:5173")
+        return RedirectResponse(url="http://localhost:5174")
     
     return RedirectResponse(url="/")
 
