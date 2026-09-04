@@ -171,6 +171,20 @@ export const api = {
     return response.json();
   },
 
+  async renameConversation(conversationId, title) {
+    const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ title }),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.detail || 'Failed to rename conversation');
+    }
+    return response.json();
+  },
+
   /**
    * Send a message in a conversation.
    */

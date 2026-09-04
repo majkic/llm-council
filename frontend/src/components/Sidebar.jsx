@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './Sidebar.css';
 
 export default function Sidebar({
@@ -7,11 +7,14 @@ export default function Sidebar({
   onSelectConversation,
   onNewConversation,
   onDeleteConversation,
+  onRenameConversation,
   usageStats,
   user,
   onLogout,
   onOpenAdmin
 }) {
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
   const formatMoney = (val) => {
     if (val === null || val === undefined) return 'Loading...';
     if (val === 'N/A') return 'N/A';
@@ -25,6 +28,22 @@ export default function Sidebar({
     if (val === 'N/A') return 'N/A';
     if (!val) return 'Loading...';
     return parseInt(val).toLocaleString();
+  };
+
+  const startRename = (event, conversation) => {
+    event.stopPropagation();
+    setRenamingId(conversation.id);
+    setRenameValue(conversation.title || 'New Conversation');
+  };
+
+  const saveRename = async (event, conversationId) => {
+    event.preventDefault();
+    try {
+      await onRenameConversation(conversationId, renameValue);
+      setRenamingId(null);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   return (
@@ -66,13 +85,20 @@ export default function Sidebar({
               onClick={() => onSelectConversation(conv.id)}
             >
               <div className="conversation-content">
-                <div className="conversation-title">
-                  {conv.title || 'New Conversation'}
-                </div>
+                {renamingId === conv.id ? (
+                  <form className="rename-form" onSubmit={(event) => saveRename(event, conv.id)} onClick={(event) => event.stopPropagation()}>
+                    <input autoFocus value={renameValue} onChange={(event) => setRenameValue(event.target.value)} onBlur={() => setRenamingId(null)} aria-label="Conversation name" />
+                  </form>
+                ) : (
+                  <div className="conversation-title">{conv.title || 'New Conversation'}</div>
+                )}
                 <div className="conversation-meta">
                   {conv.message_count} messages
                 </div>
               </div>
+              <button className="rename-conv-btn" title="Rename conversation" aria-label="Rename conversation" onClick={(event) => startRename(event, conv)}>
+                ✎
+              </button>
               <button
                   className="delete-conv-btn" 
                   title="Delete conversation"

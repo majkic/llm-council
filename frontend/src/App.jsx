@@ -303,6 +303,16 @@ function App() {
     }
   };
 
+  const handleRenameConversation = async (conversationId, title) => {
+    const renamed = await api.renameConversation(conversationId, title);
+    setConversations((previous) => previous.map((conversation) => (
+      conversation.id === conversationId ? { ...conversation, title: renamed.title } : conversation
+    )));
+    setCurrentConversation((previous) => (
+      previous?.id === conversationId ? { ...previous, title: renamed.title } : previous
+    ));
+  };
+
   if (isCheckingAuth) {
     return (
       <div className="app-loading">
@@ -328,6 +338,7 @@ function App() {
         onSelectConversation={setCurrentConversationId}
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
+        onRenameConversation={handleRenameConversation}
         usageStats={usageStats}
         user={user}
         onLogout={handleLogout}
