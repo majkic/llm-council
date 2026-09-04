@@ -18,6 +18,30 @@ def get_conversation_path(conversation_id: str) -> str:
     return os.path.join(DATA_DIR, f"{conversation_id}.json")
 
 
+def get_settings_path() -> str:
+    """Get the persisted application settings path."""
+    return os.path.join(DATA_DIR, "_settings.json")
+
+
+def get_settings(defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Load persisted application settings, falling back to configured defaults."""
+    ensure_data_dir()
+    try:
+        with open(get_settings_path(), "r") as f:
+            saved = json.load(f)
+        return {**defaults, **saved}
+    except (OSError, json.JSONDecodeError):
+        return defaults.copy()
+
+
+def save_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
+    """Persist application settings alongside conversation data."""
+    ensure_data_dir()
+    with open(get_settings_path(), "w") as f:
+        json.dump(settings, f, indent=2)
+    return settings
+
+
 def create_conversation(conversation_id: str, user_email: str) -> Dict[str, Any]:
     """
     Create a new conversation.
@@ -82,10 +106,6 @@ def delete_conversation(conversation_id: str, user_email: str):
     if not conversation:
         raise ValueError("Conversation not found or access denied")
     
-    # Strictly follow the "if it is empty" rule
-    if len(conversation.get("messages", [])) > 0:
-        raise ValueError("Cannot delete non-empty conversation")
-    
     path = get_conversation_path(conversation_id)
     if os.path.exists(path):
         os.remove(path)
@@ -119,6 +139,8 @@ def list_conversations(user_email: str) -> List[Dict[str, Any]]:
         return []
         
     for filename in os.listdir(DATA_DIR):
+        if filename == "_settings.json":
+            continue
         if filename.endswith('.json'):
             path = os.path.join(DATA_DIR, filename)
             try:

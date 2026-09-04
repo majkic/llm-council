@@ -23,6 +23,7 @@ from .config import (
     APP_ENV,
     ALLOW_LOCAL_AUTH_BYPASS,
     OPENROUTER_API_KEY
+    , DEFAULT_COUNCIL_MODELS, DEFAULT_CHAIRMAN_MODEL
 )
 from .council import (
     run_full_council,
@@ -137,6 +138,27 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
+class AdminSettingsRequest(BaseModel):
+    models: Dict[str, List[str]]
+    chairman_model: str
+
+
+def default_admin_settings() -> Dict[str, Any]:
+    return {
+        "models": {
+            "abacus": DEFAULT_COUNCIL_MODELS,
+            "openrouter": [
+                "openai/gpt-4o",
+                "anthropic/claude-3.5-sonnet",
+                "google/gemini-pro-1.5",
+                "meta-llama/llama-3-70b-instruct",
+                "mistralai/mistral-large-2",
+            ],
+        },
+        "chairman_model": DEFAULT_CHAIRMAN_MODEL,
+    }
+
+
 @app.get("/")
 async def root():
     """Health check endpoint."""
@@ -241,6 +263,31 @@ async def get_available_models(provider: str | None = None, user: Dict[str, Any]
     return await list_models(provider)
 
 
+@app.get("/api/admin/settings")
+async def get_admin_settings(user: Dict[str, Any] = Depends(get_current_user)):
+    return storage.get_settings(default_admin_settings())
+
+
+@app.put("/api/admin/settings")
+async def update_admin_settings(request: AdminSettingsRequest, user: Dict[str, Any] = Depends(get_current_user)):
+    settings = request.model_dump()
+    if not settings["chairman_model"].strip():
+        raise HTTPException(status_code=400, detail="A default chairman is required")
+    settings["models"] = {
+        provider: [model.strip() for model in models if model.strip()]
+        for provider, models in settings["models"].items()
+    }
+    return storage.save_settings(settings)
+
+
+def request_settings(request: SendMessageRequest) -> tuple[List[str] | None, str | None]:
+    settings = storage.get_settings(default_admin_settings())
+    provider = request.provider or "abacus"
+    models = request.models if request.models is not None else settings["models"].get(provider)
+    chairman_model = request.chairman_model or settings["chairman_model"]
+    return models, chairman_model
+
+
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
 async def list_conversations(user: Dict[str, Any] = Depends(get_current_user)):
     """List all conversations (metadata only)."""
@@ -266,7 +313,7 @@ async def get_conversation(conversation_id: str, user: Dict[str, Any] = Depends(
 
 @app.delete("/api/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str, user: Dict[str, Any] = Depends(get_current_user)):
-    """Delete a conversation if it is empty."""
+    """Delete an owned conversation."""
     try:
         storage.delete_conversation(conversation_id, user["email"])
         return {"status": "deleted"}
@@ -288,6 +335,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, user: 
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
 
+    models, chairman_model = request_settings(request)
+
     # Add user message
     storage.add_user_message(conversation_id, request.content, user["email"])
 
@@ -299,8 +348,8 @@ async def send_message(conversation_id: str, request: SendMessageRequest, user: 
     # Run the 3-stage council process
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
         request.content,
-        models=request.models,
-        chairman_model=request.chairman_model,
+        models=models,
+        chairman_model=chairman_model,
         provider=request.provider
     )
 
@@ -336,6 +385,15 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
+    models, chairman_model = request_settings(request)
+
+    async def stream_heartbeats(task: asyncio.Task):
+        """Keep the proxy connection alive while an LLM stage is running."""
+        while not task.done():
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=15)
+            except asyncio.TimeoutError:
+                yield ": keep-alive\n\n"
 
     async def event_generator():
         try:
@@ -349,28 +407,37 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results, stage1_usage = await stage1_collect_responses(
-                request.content, models=request.models, provider=request.provider
-            )
+            stage1_task = asyncio.create_task(stage1_collect_responses(
+                request.content, models=models, provider=request.provider
+            ))
+            async for heartbeat in stream_heartbeats(stage1_task):
+                yield heartbeat
+            stage1_results, stage1_usage = await stage1_task
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results, 'usage': stage1_usage})}\n\n"
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model, stage2_usage = await stage2_collect_rankings(
-                request.content, stage1_results, models=request.models, provider=request.provider
-            )
+            stage2_task = asyncio.create_task(stage2_collect_rankings(
+                request.content, stage1_results, models=models, provider=request.provider
+            ))
+            async for heartbeat in stream_heartbeats(stage2_task):
+                yield heartbeat
+            stage2_results, label_to_model, stage2_usage = await stage2_task
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'usage': stage2_usage, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result, stage3_usage = await stage3_synthesize_final(
+            stage3_task = asyncio.create_task(stage3_synthesize_final(
                 request.content, 
                 stage1_results, 
                 stage2_results, 
-                chairman_model=request.chairman_model, 
+                chairman_model=chairman_model,
                 provider=request.provider
-            )
+            ))
+            async for heartbeat in stream_heartbeats(stage3_task):
+                yield heartbeat
+            stage3_result, stage3_usage = await stage3_task
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result, 'usage': stage3_usage})}\n\n"
 
             # Wait for title generation if it was started
@@ -418,6 +485,7 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest,
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
         }
     )
 

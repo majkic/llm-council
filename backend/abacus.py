@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -37,10 +38,62 @@ def _to_abacus_model_id(model: str) -> str:
 _LAST_ABACUS_QUOTA = {"remaining_tokens": "Unknown"}
 
 
+async def _stream_completion(
+    client: httpx.AsyncClient,
+    headers: Dict[str, str],
+    model: str,
+    messages: List[Dict[str, str]],
+) -> Dict[str, Any]:
+    """Collect an OpenAI-compatible streaming completion from Abacus."""
+    content_parts: List[str] = []
+    usage: Dict[str, Any] = {}
+
+    async with client.stream(
+        "POST",
+        ABACUS_API_URL,
+        headers=headers,
+        json={
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            "max_tokens": 2048,
+        },
+    ) as response:
+        response.raise_for_status()
+        await _capture_quota_from_headers(response.headers)
+
+        async for line in response.aiter_lines():
+            if not line.startswith("data: "):
+                continue
+            payload = line[6:].strip()
+            if payload == "[DONE]":
+                break
+            try:
+                chunk = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            usage = chunk.get("usage") or usage
+            choices = chunk.get("choices") or []
+            if choices:
+                delta = choices[0].get("delta") or {}
+                content = delta.get("content")
+                if content:
+                    content_parts.append(content)
+
+    return {
+        "content": "".join(content_parts),
+        "usage": usage or {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        },
+    }
+
+
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
-    timeout: float = 120.0,
+    timeout: float | None = None,
     ) -> Optional[Dict[str, Any]]:
     """
     Query a single model via Abacus RouteLLM (OpenAI-compatible) API.
@@ -62,28 +115,7 @@ async def query_model(
     async with httpx.AsyncClient(timeout=timeout) as client:
         # Primary attempt: requested model
         try:
-            response = await client.post(
-                ABACUS_API_URL,
-                headers=headers,
-                json={"model": target_model, "messages": messages},
-            )
-            response.raise_for_status()
-            
-            # Capture quota info from headers
-            await _capture_quota_from_headers(response.headers)
-
-            data = response.json()
-            message = data["choices"][0]["message"]
-            usage = data.get("usage", {
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "total_tokens": 0
-            })
-
-            return {
-                "content": message.get("content"),
-                "usage": usage
-            }
+            return await _stream_completion(client, headers, target_model, messages)
         except httpx.HTTPStatusError as http_err:
             status = http_err.response.status_code if http_err.response is not None else "unknown"
             body = http_err.response.text if http_err.response is not None else ""
@@ -93,27 +125,7 @@ async def query_model(
             if status == 400 and target_model != "route-llm":
                 try:
                     print(f"Falling back to Abacus model 'route-llm' for logical model {model}...")
-                    fallback_resp = await client.post(
-                        ABACUS_API_URL,
-                        headers=headers,
-                        json={"model": "route-llm", "messages": messages},
-                    )
-                    fallback_resp.raise_for_status()
-                    
-                    # Capture quota info from fallback headers
-                    await _capture_quota_from_headers(fallback_resp.headers)
-
-                    data = fallback_resp.json()
-                    message = data["choices"][0]["message"]
-                    usage = data.get("usage", {
-                        "prompt_tokens": 0,
-                        "completion_tokens": 0,
-                        "total_tokens": 0
-                    })
-                    return {
-                        "content": message.get("content"),
-                        "usage": usage
-                    }
+                    return await _stream_completion(client, headers, "route-llm", messages)
                 except Exception as fallback_err:
                     print(f"Fallback to 'route-llm' also failed for {model}: {fallback_err}")
 

@@ -138,6 +138,18 @@
   border-color: #357abd;
 }
 
+.admin-settings-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #c8d4e0;
+  border-radius: 6px;
+  background: #fff;
+  color: #356b9f;
+  cursor: pointer;
+  font-size: 13px;
+}
+
 .conversation-list {
   flex: 1;
   overflow-y: auto;
@@ -206,6 +218,10 @@
 }
 
 .conversation-item:hover .delete-conv-btn {
+  opacity: 1;
+}
+
+.conversation-item.active .delete-conv-btn {
   opacity: 1;
 }
 

@@ -27,10 +27,27 @@ async def stage1_collect_responses(
     target_models = models or DEFAULT_COUNCIL_MODELS
     target_provider = provider or DEFAULT_LLM_PROVIDER
     
-    messages = [{"role": "user", "content": user_query}]
+    messages = [{
+        "role": "user",
+        "content": (
+            f"{user_query}\n\n"
+            "Keep your answer focused and within 1,500 words while covering the requested points."
+        ),
+    }]
 
     # Query all models in parallel
     responses = await query_models_parallel(target_models, messages, provider=target_provider)
+
+    # Some providers intermittently drop a long request when several models are
+    # queried at once. Retry only failed members sequentially so each selected
+    # model has a chance to contribute its own response.
+    for model in target_models:
+        if responses.get(model) is None:
+            responses[model] = await query_model(
+                model,
+                messages,
+                provider=target_provider,
+            )
 
     # Format results and collect usage
     stage1_results = []
@@ -55,7 +72,7 @@ async def stage2_collect_rankings(
     """
     Stage 2: Each model ranks the anonymized responses.
     """
-    target_models = models or DEFAULT_COUNCIL_MODELS
+    target_models = [result["model"] for result in stage1_results]
     target_provider = provider or DEFAULT_LLM_PROVIDER
     
     # Create anonymized labels for responses (Response A, Response B, etc.)
@@ -82,7 +99,8 @@ Here are the responses from different models (anonymized):
 {responses_text}
 
 Your task:
-1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly.
+0. Treat the response labels as strictly anonymous. Do not identify, infer, or mention any model authors.
+1. First, evaluate each response individually. For each response, explain what it does well and what it does poorly. Keep each evaluation concise.
 2. Then, at the very end of your response, provide a final ranking.
 
 IMPORTANT: Your final ranking MUST be formatted EXACTLY as follows:
@@ -266,9 +284,7 @@ Title:"""
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Use gemini-2.5-flash for title generation (fast and cheap)
-    # Note: Using OpenRouter for this by default, but we could make it configurable too
-    response = await query_model("google/gemini-2-5-flash-lite", messages, timeout=30.0)
+    response = await query_model("gemini-2.5-flash", messages)
 
     if response is None:
         # Fallback to a generic title

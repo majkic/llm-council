@@ -21,7 +21,7 @@ def _get_provider_module(provider_name: str | None = None):
 async def query_model(
     model: str,
     messages: List[Dict[str, str]],
-    timeout: float = 120.0,
+    timeout: float | None = None,
     provider: str | None = None,
 ) -> Optional[Dict[str, Any]]:
     prov_mod = _get_provider_module(provider)

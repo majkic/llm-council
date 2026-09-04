@@ -160,6 +160,15 @@
   font-style: italic;
 }
 
+.stage-error {
+  margin: 12px 0;
+  padding: 12px;
+  color: #8a4b00;
+  background: #fff7e6;
+  border: 1px solid #f0c36d;
+  border-radius: 6px;
+}
+
 .spinner {
   width: 20px;
   height: 20px;

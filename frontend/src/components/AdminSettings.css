@@ -1,0 +1,13 @@
+.admin-backdrop { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 20px; background: rgba(20, 30, 40, 0.42); }
+.admin-dialog { width: min(620px, 100%); padding: 20px; border: 1px solid #cfd8df; border-radius: 8px; background: #fff; box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2); }
+.admin-dialog-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.admin-dialog h2 { margin: 0; font-size: 18px; }
+.dialog-close { border: 0; background: transparent; color: #555; font-size: 20px; cursor: pointer; }
+.admin-field { display: block; margin-bottom: 14px; color: #333; font-size: 13px; font-weight: 600; }
+.admin-field span { display: block; margin-bottom: 6px; }
+.admin-field textarea, .admin-field input { width: 100%; border: 1px solid #b9c4cc; border-radius: 5px; padding: 9px; color: #222; font: 13px monospace; }
+.admin-field textarea { resize: vertical; }
+.admin-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.admin-actions button { border: 1px solid #b9c4cc; border-radius: 5px; padding: 8px 12px; cursor: pointer; background: #fff; }
+.admin-actions button[type='submit'] { border-color: #4a90e2; background: #4a90e2; color: #fff; }
+.admin-error { margin: 0; color: #bd2323; font-size: 13px; }

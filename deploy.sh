@@ -29,5 +29,5 @@ ssh ${REMOTE_HOST} "cd ${REMOTE_PATH} && \
     docker compose up -d --build"
 
 echo "✅ Deployment complete!"
-echo "🌐 Frontend: http://ll.rs:5174 (or your configured domain)"
-echo "📡 Backend: http://ll.rs:8001"
+echo "🌐 Frontend: https://llm-council.ll.rs"
+echo "📡 Backend: https://llm-council.ll.rs/api"
