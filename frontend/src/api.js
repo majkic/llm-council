@@ -47,6 +47,28 @@ export const api = {
     return response.json();
   },
 
+  async getAdminSettings() {
+    const response = await fetch(`${API_BASE}/api/admin/settings`, {
+      credentials: 'include'
+    });
+    if (!response.ok) throw new Error('Failed to load admin settings');
+    return response.json();
+  },
+
+  async updateAdminSettings(settings) {
+    const response = await fetch(`${API_BASE}/api/admin/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(settings),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.detail || 'Failed to update admin settings');
+    }
+    return response.json();
+  },
+
   /**
    * Get current user (check auth status).
    */
@@ -194,6 +216,7 @@ export const api = {
           models,
           chairman_model
         }),
+        credentials: 'include',
       }
     );
 
@@ -203,15 +226,17 @@ export const api = {
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = '';
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const events = buffer.split('\n\n');
+      buffer = events.pop();
 
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-
-      for (const line of lines) {
+      for (const eventText of events) {
+        const line = eventText.split('\n').find((entry) => entry.startsWith('data: '));
+        if (!line) continue;
         if (line.startsWith('data: ')) {
           const rawData = line.slice(6).trim();
           if (!rawData) continue;
@@ -224,6 +249,8 @@ export const api = {
           }
         }
       }
+
+      if (done) break;
     }
   },
 };

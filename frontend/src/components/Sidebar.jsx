@@ -9,7 +9,8 @@ export default function Sidebar({
   onDeleteConversation,
   usageStats,
   user,
-  onLogout
+  onLogout,
+  onOpenAdmin
 }) {
   const formatMoney = (val) => {
     if (val === null || val === undefined) return 'Loading...';
@@ -47,6 +48,9 @@ export default function Sidebar({
         <button className="new-conversation-btn" onClick={onNewConversation}>
           + New Conversation
         </button>
+        <button className="admin-settings-btn" onClick={onOpenAdmin}>
+          Admin Settings
+        </button>
       </div>
 
       <div className="conversation-list">
@@ -69,10 +73,9 @@ export default function Sidebar({
                   {conv.message_count} messages
                 </div>
               </div>
-              {conv.message_count === 0 && (
-                <button 
+              <button
                   className="delete-conv-btn" 
-                  title="Delete empty conversation"
+                  title="Delete conversation"
                   onClick={(e) => {
                     e.stopPropagation();
                     onDeleteConversation(conv.id);
@@ -85,7 +88,6 @@ export default function Sidebar({
                     <line x1="14" y1="11" x2="14" y2="17"></line>
                   </svg>
                 </button>
-              )}
             </div>
           ))
         )}

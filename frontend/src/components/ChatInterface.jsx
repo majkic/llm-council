@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { Component, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Stage1 from './Stage1';
 import Stage2 from './Stage2';
@@ -17,18 +17,43 @@ const PROVIDER_MODELS = {
   abacus: [
     'gpt-5.1',
     'gemini-3.1-pro-preview',
-    'claude-sonnet-4-20250514',
-    'grok-4-0709',
+    'claude-sonnet-4-5-20250929',
+    'grok-4.5',
     'route-llm',
   ],
 };
+
+class StageErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidUpdate(previousProps) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div className="stage-error">This stage could not be displayed. The remaining results are still available.</div>;
+    }
+    return this.props.children;
+  }
+}
 
 export default function ChatInterface({
   conversation,
   onSendMessage,
   isLoading,
   user,
-  onLogout
+  onLogout,
+  adminSettings
 }) {
   const [input, setInput] = useState('');
   const [provider, setProvider] = useState('openrouter');
@@ -47,9 +72,9 @@ export default function ChatInterface({
 
   // Update selected models and fetch available models when provider changes
   useEffect(() => {
-    setSelectedModels(PROVIDER_MODELS[provider] || []);
+    setSelectedModels(adminSettings?.models?.[provider] || PROVIDER_MODELS[provider] || []);
     fetchAvailableModels();
-  }, [provider]);
+  }, [provider, adminSettings]);
 
   const fetchAvailableModels = async () => {
     try {
@@ -150,7 +175,7 @@ export default function ChatInterface({
               <div className="config-section">
                 <label>Council Models ({selectedModels.length} selected)</label>
                 <div className="model-grid">
-                  {(PROVIDER_MODELS[provider] || []).map((model) => (
+                  {(adminSettings?.models?.[provider] || PROVIDER_MODELS[provider] || []).map((model) => (
                     <div
                       key={model}
                       className={`model-chip ${selectedModels.includes(model) ? 'active' : ''}`}
@@ -160,7 +185,7 @@ export default function ChatInterface({
                     </div>
                   ))}
                   {selectedModels
-                    .filter((m) => !PROVIDER_MODELS[provider]?.includes(m))
+                    .filter((m) => !(adminSettings?.models?.[provider] || PROVIDER_MODELS[provider] || []).includes(m))
                     .map((model) => (
                       <div
                         key={model}
@@ -222,11 +247,13 @@ export default function ChatInterface({
                     </div>
                   )}
                   {msg.stage2 && (
-                    <Stage2
-                      rankings={msg.stage2}
-                      labelToModel={msg.metadata?.label_to_model}
-                      aggregateRankings={msg.metadata?.aggregate_rankings}
-                    />
+                    <StageErrorBoundary resetKey={`${index}-stage2`}>
+                      <Stage2
+                        rankings={msg.stage2}
+                        labelToModel={msg.metadata?.label_to_model}
+                        aggregateRankings={msg.metadata?.aggregate_rankings}
+                      />
+                    </StageErrorBoundary>
                   )}
 
                   {/* Stage 3 */}
@@ -239,17 +266,17 @@ export default function ChatInterface({
                   {msg.stage3 && <Stage3 finalResponse={msg.stage3} />}
 
                   {/* Token Usage Summary */}
-                  {msg.metadata?.usage && (
+                  {msg.metadata?.usage?.total && (
                     <div className="usage-summary">
                       <div className="total-tokens">
-                        Total Tokens: <strong>{msg.metadata.usage.total.total_tokens.toLocaleString()}</strong>
+                        Total Tokens: <strong>{Number(msg.metadata.usage.total.total_tokens || 0).toLocaleString()}</strong>
                       </div>
                       <div className="usage-breakdown">
-                        <span>Stage 1: {msg.metadata.usage.stage1.total_tokens.toLocaleString()}</span>
+                        <span>Stage 1: {Number(msg.metadata.usage.stage1?.total_tokens || 0).toLocaleString()}</span>
                         <span className="separator">•</span>
-                        <span>Stage 2: {msg.metadata.usage.stage2.total_tokens.toLocaleString()}</span>
+                        <span>Stage 2: {Number(msg.metadata.usage.stage2?.total_tokens || 0).toLocaleString()}</span>
                         <span className="separator">•</span>
-                        <span>Stage 3: {msg.metadata.usage.stage3.total_tokens.toLocaleString()}</span>
+                        <span>Stage 3: {Number(msg.metadata.usage.stage3?.total_tokens || 0).toLocaleString()}</span>
                       </div>
                     </div>
                   )}

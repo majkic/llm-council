@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import ChatInterface from './components/ChatInterface';
 import Login from './components/Login';
 import Unauthorized from './components/Unauthorized';
+import AdminSettings from './components/AdminSettings';
 import { api } from './api';
 import './App.css';
 
@@ -16,6 +17,8 @@ function App() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
   const [unauthorizedEmail, setUnauthorizedEmail] = useState('');
+  const [adminSettings, setAdminSettings] = useState(null);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   // Check auth and load conversations on mount
   useEffect(() => {
@@ -52,6 +55,7 @@ function App() {
           setUser(currentUser);
           await loadConversations();
           await loadUsageStats();
+          setAdminSettings(await api.getAdminSettings());
         } else {
           setUser(null);
         }
@@ -285,7 +289,7 @@ function App() {
   };
 
   const handleDeleteConversation = async (conversationId) => {
-    if (!window.confirm('Are you sure you want to delete this empty conversation?')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this conversation?')) return;
     try {
       await api.deleteConversation(conversationId);
       loadConversations();
@@ -327,6 +331,7 @@ function App() {
         usageStats={usageStats}
         user={user}
         onLogout={handleLogout}
+        onOpenAdmin={() => setIsAdminOpen(true)}
       />
       <ChatInterface
         conversation={currentConversation}
@@ -334,7 +339,19 @@ function App() {
         onSendMessage={handleSendMessage}
         user={user}
         onLogout={handleLogout}
+        adminSettings={adminSettings}
       />
+      {isAdminOpen && adminSettings && (
+        <AdminSettings
+          settings={adminSettings}
+          onClose={() => setIsAdminOpen(false)}
+          onSave={async (settings) => {
+            const saved = await api.updateAdminSettings(settings);
+            setAdminSettings(saved);
+            setIsAdminOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

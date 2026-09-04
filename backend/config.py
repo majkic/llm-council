@@ -101,14 +101,14 @@ if _COUNCIL_MODELS_ENV:
     DEFAULT_COUNCIL_MODELS = [m.strip() for m in _COUNCIL_MODELS_ENV.split(",") if m.strip()]
 else:
     DEFAULT_COUNCIL_MODELS = [
-        "openai/gpt-5.1",
-        "google/gemini-3-pro-preview",
-        "anthropic/claude-sonnet-4.5",
-        "x-ai/grok-4",
+        "gpt-5.1",
+        "gemini-3.1-pro-preview",
+        "claude-sonnet-4-5-20250929",
+        "grok-4.5",
     ]
 
 # Chairman model - synthesizes final response
-DEFAULT_CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL", "google/gemini-3-pro-preview").strip()
+DEFAULT_CHAIRMAN_MODEL = os.getenv("CHAIRMAN_MODEL", "gemini-3.1-pro-preview").strip()
 
 # Legacy names for backward compatibility (still used in some places)
 LLM_PROVIDER = DEFAULT_LLM_PROVIDER
