@@ -138,6 +138,10 @@ class Conversation(BaseModel):
     messages: List[Dict[str, Any]]
 
 
+class RenameConversationRequest(BaseModel):
+    title: str
+
+
 class AdminSettingsRequest(BaseModel):
     models: Dict[str, List[str]]
     chairman_model: str
@@ -319,6 +323,31 @@ async def delete_conversation(conversation_id: str, user: Dict[str, Any] = Depen
         return {"status": "deleted"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.patch("/api/conversations/{conversation_id}", response_model=ConversationMetadata)
+async def rename_conversation(
+    conversation_id: str,
+    request: RenameConversationRequest,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    title = request.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Conversation name cannot be empty")
+    if len(title) > 100:
+        raise HTTPException(status_code=400, detail="Conversation name must be 100 characters or fewer")
+
+    conversation = storage.get_conversation(conversation_id, user["email"])
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found or access denied")
+
+    storage.update_conversation_title(conversation_id, title, user["email"])
+    return {
+        "id": conversation["id"],
+        "created_at": conversation["created_at"],
+        "title": title,
+        "message_count": len(conversation["messages"]),
+    }
 
 
 @app.post("/api/conversations/{conversation_id}/message")
