@@ -1,0 +1,230 @@
+.admin-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.admin-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #f0f2f5;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 24px;
+    color: #1a1a1a;
+}
+
+.back-btn {
+    padding: 8px 16px;
+    background: #f0f2f5;
+    color: #1a1a1a;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background: #e4e6eb;
+}
+
+.admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.provider-section {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.provider-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.provider-header label {
+    font-weight: 600;
+    font-size: 18px;
+    color: #333;
+    cursor: pointer;
+}
+
+.provider-header input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.model-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.model-input-group label {
+    font-size: 14px;
+    color: #666;
+}
+
+.model-input-group input[type="text"] {
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 100%;
+    transition: border-color 0.2s;
+}
+
+.model-input-group input[type="text"]:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+.model-input-group input[type="text"]:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.save-settings-btn {
+    padding: 12px 24px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+    transition: background 0.2s;
+}
+
+.save-settings-btn:hover {
+    background: #0056b3;
+}
+
+.admin-status {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+.status-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.model-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.model-tag {
+    background: #e9ecef;
+    color: #333;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.model-tag button {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+}
+
+.model-tag button:hover {
+    color: #dc3545;
+}
+
+.model-select-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.model-select-wrapper select {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background: white;
+    font-size: 14px;
+}
+
+.add-model-btn {
+    padding: 10px 16px;
+    background: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.add-model-btn:hover {
+    background: #218838;
+}
+
+.admin-model-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.custom-model-form-admin {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.custom-model-form-admin button {
+    padding: 0 16px;
+    background: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.custom-model-form-admin button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
