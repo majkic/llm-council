@@ -34,7 +34,12 @@ cd ..
 
 ### 2. Configure API Key
 
-Create a `.env` file in the project root. You can use either Abacus AI or OpenRouter.
+Create a `.env` file in the project root. Set `BASE_DOMAIN` to your base domain; deployment scripts use it as the SSH host and the app derives its public hostname as `llm-council.${BASE_DOMAIN}`. The same file is used by Docker Compose for the backend's public-domain configuration and session key. You can use either Abacus AI or OpenRouter.
+
+```bash
+BASE_DOMAIN=your-domain.example
+SECRET_KEY=generate-a-random-secret-at-least-32-characters
+```
 
 **Option A: Abacus AI (Default)**
 ```bash
@@ -49,6 +54,16 @@ LLM_PROVIDER=openrouter
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
 Get your API key at [openrouter.ai](https://openrouter.ai/). Make sure to purchase the credits you need, or sign up for automatic top up.
+
+### Production Session Security
+
+Set a strong `SECRET_KEY` in the project-root `.env` before deploying with Docker Compose. Compose passes it to the backend container. Generate one with:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Production startup fails if `SECRET_KEY` is missing or shorter than 32 characters. Keep provider API keys in `backend/.env` for Compose deployments. Local development generates a temporary session key when one is not set.
 
 ### 3. Configure Models (Optional)
 

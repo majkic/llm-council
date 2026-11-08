@@ -20,6 +20,7 @@ from .config import (
     IS_PUBLIC_SERVER,
     is_localhost,
     APP_DOMAIN,
+    BASE_DOMAIN,
     APP_ENV,
     ALLOW_LOCAL_AUTH_BYPASS,
     OPENROUTER_API_KEY
@@ -70,8 +71,7 @@ app.add_middleware(
         "http://127.0.0.1:5174",
         "http://127.0.0.1:5173",
         f"https://{APP_DOMAIN}", 
-        "https://llm-board.${BASE_DOMAIN}",
-        "https://llm-council.${BASE_DOMAIN}"
+        f"https://llm-board.{BASE_DOMAIN}",
     ],
     allow_credentials=True,
     allow_methods=["*"],

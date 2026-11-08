@@ -4,9 +4,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     env_file:
       - ./backend/.env
+    environment:
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the project .env file}
+      BASE_DOMAIN: ${BASE_DOMAIN:?Set BASE_DOMAIN in the project .env file}
     volumes:
       - ./data/conversations:/app/data/conversations
     restart: always
@@ -16,10 +19,20 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "5174:5174"
+      - "127.0.0.1:5174:5174"
+    networks:
+      default: {}
+      web_network:
+        aliases:
+          - llm-council-frontend
     environment:
       # Empty value means the frontend will use relative paths (best for Nginx)
       - VITE_API_URL=
     depends_on:
       - backend
     restart: always
+
+networks:
+  web_network:
+    external: true
+    name: web_network

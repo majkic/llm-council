@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # Configuration
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BASE_DOMAIN="$(sed -n 's/^BASE_DOMAIN=//p' "${ROOT_DIR}/.env" | tail -n 1)"
+if [[ ! "$BASE_DOMAIN" =~ ^[A-Za-z0-9.-]+$ || "$BASE_DOMAIN" == .* || "$BASE_DOMAIN" == *. || "$BASE_DOMAIN" == *..* ]]; then
+    echo "Set a valid BASE_DOMAIN in ${ROOT_DIR}/.env" >&2
+    exit 1
+fi
+
 REMOTE_HOST="root@${BASE_DOMAIN}"
 REMOTE_PATH="/opt/llm-council/data/conversations/"
 

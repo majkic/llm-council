@@ -1,6 +1,7 @@
 """Configuration for the LLM Council."""
 
 import os
+import secrets
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -65,15 +66,24 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
 # Default to empty for security; must be set in .env on public server
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "majkic@gmail.com") 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-long-secret-key-change-this") # For SessionMiddleware
 
-# Public server domain (e.g. llm-council.${BASE_DOMAIN})
-APP_DOMAIN = os.getenv("APP_DOMAIN", "llm-council.${BASE_DOMAIN}").strip()
+# Public server base domain, configured in the project .env file.
+BASE_DOMAIN = os.getenv("BASE_DOMAIN", "localhost").strip()
+APP_DOMAIN = os.getenv("APP_DOMAIN", f"llm-council.{BASE_DOMAIN}").strip()
 
 # Detection for public vs local
 # SECURE BY DEFAULT: Default to production if not specified.
 APP_ENV = os.getenv("APP_ENV", "production").lower()
 IS_PUBLIC_SERVER = APP_ENV == "production"
+
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if IS_PUBLIC_SERVER:
+    if len(SECRET_KEY) < 32:
+        raise RuntimeError(
+            "SECRET_KEY must be configured with at least 32 characters in production."
+        )
+else:
+    SECRET_KEY = SECRET_KEY or secrets.token_urlsafe(32)
 
 # Explicit flag for local bypass - must be 'true' and APP_ENV must be local
 ALLOW_LOCAL_AUTH_BYPASS = os.getenv("ALLOW_LOCAL_AUTH_BYPASS", "false").lower() == "true"
